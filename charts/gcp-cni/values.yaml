@@ -1,0 +1,20 @@
+imageRegistry: europe-central2-docker.pkg.dev/castlocal-adam/live
+
+installer:
+  image:
+    repository: gcp-cni-installer
+    tag: latest
+  logLevel: info
+
+  confName: 10-gke-ptp.conflist
+
+provisioner:
+  image:
+    repository: gcp-cni-provisioner
+    tag: latest
+  logLevel: info
+
+  gcpServiceAccount: adam-gcp-cni@engineering-test-353509.iam.gserviceaccount.com
+
+  secondaryRangeName: adamp-live-pods
+  secondaryRangeSizeBits: 16

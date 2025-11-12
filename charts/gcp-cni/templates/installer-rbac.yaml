@@ -1,0 +1,66 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: gcp-cni-node
+  labels:
+    {{- include "gcp-cni.labels" . | nindent 4 }}
+rules:
+  # Access to pods for getting pod information in CNI plugin
+  - apiGroups: [""]
+    resources: ["pods"]
+    verbs: ["get", "list"]
+  # Access to IPPool CRD for IP allocation
+  # The IPAM plugin runs as a binary on the node, invoked by containerd,
+  # and uses the node's identity (system:node:<node-name>)
+  - apiGroups: ["ipam.gcp-cni.cast.ai"]
+    resources: ["ippools"]
+    verbs: ["get", "list", "watch", "update", "patch"]
+  - apiGroups: ["ipam.gcp-cni.cast.ai"]
+    resources: ["ippools/status"]
+    verbs: ["get", "update", "patch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: gcp-cni-node
+  labels:
+    {{- include "gcp-cni.labels" . | nindent 4 }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: gcp-cni-node
+subjects:
+  # Grant permissions to all nodes
+  # CNI plugins run on the node and authenticate using the node's identity
+  - kind: Group
+    name: system:nodes
+    apiGroup: rbac.authorization.k8s.io
+---
+# Separate RBAC for the installer daemonset itself
+# (for any Kubernetes API calls the installer makes, not the IPAM plugin)
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: gcp-cni-installer
+  labels:
+    {{- include "gcp-cni.labels" . | nindent 4 }}
+rules:
+  # Minimal permissions for the installer daemonset
+  - apiGroups: [""]
+    resources: ["configmaps"]
+    verbs: ["get", "list"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: gcp-cni-installer
+  labels:
+    {{- include "gcp-cni.labels" . | nindent 4 }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: gcp-cni-installer
+subjects:
+  - kind: ServiceAccount
+    name: gcp-cni-installer
+    namespace: kube-system

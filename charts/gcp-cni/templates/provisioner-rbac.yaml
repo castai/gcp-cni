@@ -1,0 +1,33 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: gcp-cni-provisioner
+  labels:
+    {{- include "gcp-cni.labels" . | nindent 4 }}
+rules:
+  # ConfigMaps for storing state
+  - apiGroups: [""]
+    resources: ["configmaps"]
+    verbs: ["get", "list", "create", "update"]
+  # Access to IPPool CRD for managing IP pools
+  - apiGroups: ["ipam.gcp-cni.cast.ai"]
+    resources: ["ippools"]
+    verbs: ["get", "list", "create", "update", "patch", "delete"]
+  - apiGroups: ["ipam.gcp-cni.cast.ai"]
+    resources: ["ippools/status"]
+    verbs: ["get", "update", "patch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: gcp-cni-provisioner
+  labels:
+    {{- include "gcp-cni.labels" . | nindent 4 }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: gcp-cni-provisioner
+subjects:
+  - kind: ServiceAccount
+    name: gcp-cni-provisioner
+    namespace: kube-system

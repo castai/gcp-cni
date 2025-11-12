@@ -1,0 +1,68 @@
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: gcp-cni-installer
+  namespace: kube-system
+  labels:
+    app: gcp-cni-installer
+    k8s-app: gcp-cni-installer
+spec:
+  selector:
+    matchLabels:
+      app: gcp-cni-installer
+  updateStrategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 1
+  template:
+    metadata:
+      labels:
+        app: gcp-cni-installer
+        k8s-app: gcp-cni-installer
+    spec:
+      hostNetwork: true
+      priorityClassName: system-node-critical
+      tolerations:
+      - operator: Exists
+        effect: NoSchedule
+      - operator: Exists
+        effect: NoExecute
+      - key: CriticalAddonsOnly
+        operator: Exists
+      serviceAccountName: gcp-cni-installer
+      containers:
+      - name: daemon
+        image: {{ .Values.imageRegistry }}/{{ .Values.installer.image.repository }}:{{ .Values.installer.image.tag }}
+        imagePullPolicy: Always
+        args:
+          - "--log-level={{ .Values.installer.logLevel }}"
+          - "--cni-bin-dir=/home/kubernetes/bin"
+          - "--cni-conf-dir=/etc/cni/net.d"
+          - "--cni-conf-name={{ .Values.installer.confName }}"
+          - "--host-root=/host"
+        securityContext:
+          privileged: true
+          capabilities:
+            add:
+            - SYS_ADMIN
+        volumeMounts:
+        - name: cni-bin-dir
+          mountPath: /host
+        - name: cni-conf-dir
+          mountPath: /host/etc/cni/net.d
+        resources:
+          requests:
+            cpu: 10m
+            memory: 20Mi
+          limits:
+            cpu: 100m
+            memory: 50Mi
+      volumes:
+      - name: cni-bin-dir
+        hostPath:
+          path: /
+          type: DirectoryOrCreate
+      - name: cni-conf-dir
+        hostPath:
+          path: /etc/cni/net.d
+          type: DirectoryOrCreate

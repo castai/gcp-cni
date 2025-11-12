@@ -1,0 +1,56 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: gcp-cni-provisioner
+  namespace: kube-system
+  labels:
+    app: gcp-cni-provisioner
+    component: network-provisioner
+    {{- include "gcp-cni.labels" . | nindent 4 }}
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: gcp-cni-provisioner
+      component: network-provisioner
+  template:
+    metadata:
+      labels:
+        app: gcp-cni-provisioner
+        component: network-provisioner
+        {{- include "gcp-cni.labels" . | nindent 8 }}
+    spec:
+      restartPolicy: Always
+      serviceAccountName: gcp-cni-provisioner
+      priorityClassName: system-node-critical
+      tolerations:
+      - operator: Exists
+        effect: NoSchedule
+      - operator: Exists
+        effect: NoExecute
+      - key: CriticalAddonsOnly
+        operator: Exists
+      containers:
+        - name: provisioner
+          image: {{ .Values.imageRegistry }}/{{ .Values.provisioner.image.repository }}:{{ .Values.provisioner.image.tag }}
+          imagePullPolicy: Always
+          args:
+            - "--log-level={{ .Values.provisioner.logLevel }}"
+            - "--secondary-range-name={{ .Values.provisioner.secondaryRangeName }}"
+            - "--range-size-bits={{ .Values.provisioner.secondaryRangeSizeBits }}"
+          resources:
+            requests:
+              cpu: 100m
+              memory: 64Mi
+            limits:
+              cpu: 500m
+              memory: 128Mi
+          securityContext:
+            runAsNonRoot: false
+            runAsUser: 0
+            capabilities:
+              drop:
+              - ALL
+            readOnlyRootFilesystem: true
